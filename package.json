@@ -1,0 +1,5 @@
+{
+  "name": "boss",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"]
+}

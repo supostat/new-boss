@@ -1,0 +1,25 @@
+/* boss design tokens — the single source of color and metric (design book §XII).
+   Semantic names only; components never see raw hex. */
+@theme {
+  /* the semantic triple — one order, one meaning, everywhere */
+  --color-rota: #3e6c9e;      /* chalk — planned */
+  --color-clocked: #0f7a4f;   /* baize — actual */
+  --color-amended: #a9853e;   /* brass — amended / pending */
+
+  /* brand and surfaces */
+  --color-brand: #0f5138;     /* header, primary actions */
+  --color-canvas: #f1f0eb;    /* page background */
+  --color-surface: #fafaf7;   /* cards, tables */
+  --color-ink: #16211b;       /* text */
+  --color-muted: #5a665f;     /* secondary text */
+  --color-line: #dfddd4;      /* borders */
+  --color-danger: #a43e2e;    /* errors, destructive */
+
+  /* type */
+  --font-display: "Piazzolla", serif;
+  --font-sans: "Golos Text", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* shape */
+  --radius-base: 6px;
+}
