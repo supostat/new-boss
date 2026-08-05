@@ -1,0 +1,13 @@
+{
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!apps/web/src/styles/tokens.css",
+      "!scripts/check-structure.ts"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space" },
+  "linter": { "enabled": true, "rules": { "recommended": true } }
+}

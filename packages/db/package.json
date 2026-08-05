@@ -1,1 +1,4 @@
-{ "name": "@boss/db", "private": true }
+{
+  "name": "@boss/db",
+  "private": true
+}
