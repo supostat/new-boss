@@ -1,4 +1,11 @@
 {
   "name": "@boss/server",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "pg": "^8.22.0",
+    "pg-boss": "^12.27.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.4"
+  }
 }
