@@ -1,6 +1,6 @@
 # CLAUDE.md — boss
 
-The project canon is `docs/design-book.html` (revision 0.15). This file is the digest for agents.
+The project canon is `docs/design-book.html` (revision 0.16). This file is the digest for agents.
 `docs/` is gitignored while the repository is public: the canon lives locally, is NOT tracked,
 and mneme notes must NEVER anchor to `docs/*` (untracked anchor = dead-anchor sink).
 On any divergence the canon wins and the digest gets fixed. Same for `DESIGN.md` — it is derived
@@ -28,6 +28,11 @@ Zod as the single validation language · Drizzle + Postgres · Biome (lint+forma
 + Query · Tailwind v4 `@theme` + shadcn/ui · SSE (events invalidate, they carry no data) ·
 Vitest + Playwright · Docker → Dokku → DigitalOcean.
 
+Two outward contracts, split on purpose: tRPC is internal, lives on types and may break daily;
+REST + OpenAPI (`rest/v1`, URL `/api/v1`, spec generated from the same Zod schemas) serves external
+consumers — PRAECO and successors — plus webhooks from the worker, and breaks only through a
+version. Internal speed is not hostage to external stability.
+
 ## Repository map (§III)
 
 ```
@@ -36,6 +41,7 @@ apps/server/src/{main,worker,app,router}.ts
 apps/server/src/features/<slice>/{router,service,queries,jobs,events,*.test}.ts
 apps/server/src/platform/   # queue · sse · auth · s3 · env
 apps/server/src/rest/v1/    # external facade
+apps/web/src/{main,router}.tsx
 apps/web/src/features/<slice>/{routes.tsx,components/,api.ts}
 apps/web/src/shell/         # frame: header, site-select, layouts for both scopes
 apps/web/src/ui/            # shadcn primitives; ui/domain/ — the domain vocabulary
@@ -47,23 +53,55 @@ e2e/  scripts/  docker/
 Slices are named by domain (`hours-confirmation`, `staff`), never by technology.
 Venue-scoped routes — `/venues/$venueId/…` (site-select lives in the frame);
 fleet-scoped — `/staff…` (no selector; venues are data there).
+`staff` is ONE slice: the passport and its eight subdomains (holidays, owed hours, accessories,
+shifts, payments, disciplinary, quizzes) never become slices of their own. Invites are our own
+domain in `features/users/` — own table and flow, calling the auth API inside.
+Routing is code, not files: `routes.tsx` per slice, assembled in `router.tsx`.
 
 ## Rules
 
 - **Imports** (enforced by `scripts/check-imports.ts`): slices never import each other —
   only via `platform/` or events; `@boss/db` is server-only; `ui/` never imports `features/`;
-  `better-auth` is imported ONLY in `platform/auth.ts` — slices see `Session` / `requireRole()`
-  / role procedures, never the library. `user ≠ staff`: users log into the portal, staff clock
-  at venues; the optional link lives on the staff side.
+  `better-auth` is imported ONLY in `platform/auth.ts` — slices see `Session` / the policy
+  primitives (`atLeast` / `hasTrait` / `inVenue`) / role procedures, never the library.
+  `user ≠ staff`: users log into the portal, staff clock at venues; the optional link lives on
+  the staff side.
 - **Dependencies**: latest stable releases; lockfile in git; betas and RCs never enter the
   production branch.
-- **Migrations**: `drizzle-kit generate` only (+ `--custom` for hand-written SQL);
+- **Toolchain** (frozen by spec): the four script names `typecheck` · `test` · `lint` · `format`
+  are FROZEN — every future spec criterion cites them, and a rename breaks every future gate.
+  Biome carries no type-aware rules (tsc strict carries type strictness); files frozen by past
+  specs are excluded from the formatter by name. Normalize with `bunx biome check --write` —
+  `format` alone skips assists, `organizeImports` among them. Compose Postgres 18 maps its volume
+  to `/var/lib/postgresql`: the 18 major moved PGDATA, and the old path silently bypasses the
+  volume.
+- **Migrations**: `drizzle-kit generate` only; `--custom` hand-written SQL is for DATA only;
   expand → migrate → contract; a rollback is a new migration forward; squawk in CI.
 - **Data**: types flow from `$inferSelect`; the rota / clocked / amended triple is an
-  aggregate, not columns (§IV).
-- **UI**: semantic tokens from `styles/tokens.css` only; primitives via `shadcn add` at the
-  moment of need; domain vocabulary in `ui/domain/` with variants as `Record<Union, …>`
-  (exhaustive, no default); catalog — Ladle; extraction by the rule of three.
+  aggregate, not columns (§IV). The ±1h guard limit is a named domain constant, never a literal,
+  and the server re-checks whatever the UI checked.
+- **API**: procedures are thin — parse the input, call the service. Rights sit at the procedure
+  level (`staffProcedure` / `managerProcedure`), never as scattered `if`s in the body.
+  Segregation of duties (a creator does not accept their own request, never self, flagged is
+  admin-only) is ordinary policy code taking the object.
+- **Jobs**: every job must survive a replay — the idempotency key rides in the payload and is
+  checked as the first action. Retries back off exponentially; an exhausted job lands in the
+  dead-jobs table with a NOTIFY to the alert channel. Cron is the same mechanism, never a system
+  crontab.
+- **Realtime**: the NOTIFY payload carries only the ADDRESS of the change (venue, entity), never
+  data — the client re-reads through the ordinary typed query, so delivery order, lost events and
+  duplicated serialization stop being problems. One `LISTEN` per process in the SSE hub. SSE
+  stands while the stream is one-way; bidirectionality is a separate decision of a separate
+  revision.
+- **State**: TanStack Query is the server cache, the URL holds filters and context, `useState`
+  holds the ephemeral. There is no state manager, because no state needs one.
+- **UI**: semantic tokens from `styles/tokens.css` only (`--color-rota`, never `--green-700`);
+  primitives via `shadcn add` at the moment of need — a hand-rolled primitive ("our own Button")
+  is forbidden, distinctiveness lives in tokens and the domain layer; domain vocabulary in
+  `ui/domain/` with variants as `Record<Union, …>` (exhaustive, no default); catalog — Ladle;
+  extraction by the rule of three, with one named exception — `StatusPill`, `EvidenceTimeline`
+  and `HoursTotals` are extracted up front because legacy already proved their repetition
+  (`CandidateCard`, `AvatarRing` follow the rule).
 - **Overlays**: sizes are the `OverlaySize` union ('confirm' 400 / 'form' 560 / 'wide' 720;
   drawer fixed 480) — never a number prop. Genres: confirm / dialog (≤~6 fields, no scroll) /
   drawer (~7–12 fields, sticky footer, discard guard) / inline. 13+ fields = a passport-form
@@ -80,11 +118,46 @@ fleet-scoped — `/staff…` (no selector; venues are data there).
 - **Code comments**: never reference the book (§), phases, or specs — code explains itself;
   the provenance of decisions lives in mneme notes and specs.
 - **Tests**: a red test before the change; the bulk are integration tests against a real
-  Postgres (transaction rolled back per test); no database mocks.
+  Postgres (transaction rolled back per test); no database mocks. An hourglass, not a pyramid:
+  ~70% integration (the slice end to end — procedure → service → transaction → job →
+  NOTIFY), ~20% unit (pure logic: the three times, breaks, shifts crossing midnight), ~10% e2e.
+  The test lives in the slice, beside the code it specifies.
+
+## Deploy (§X)
+
+One image, two processes (`web` + `worker` in the Procfile); DO Managed Postgres (backups, PITR
+and failover bought, not built); migrations run in the release phase before traffic switches.
+Clock-in photos are presigned-uploaded from the browser straight to Spaces — the server issues the
+signature and the bytes never pass through it. Secrets are env through Dokku today, the ARCA
+module next, same interface. Observability is structured logs to stdout plus the dead-jobs table
+with a Telegram NOTIFY alert; a separate APM is deliberately absent while the fleet is small.
+
+## Rejected (§XI) — never re-propose without the human
+
+Rails · NestJS · GraphQL · Redis · Next.js/SSR · Elysia · Fastify · Prisma · own auth on
+primitives (Oslo/Arctic) · Auth.js and managed auth (Clerk, Auth0) · pnpm · policy engines and
+rights-in-data (CASL, casbin, Postgres RLS) · testcontainers · ESLint+Prettier · oxlint ·
+Graphile Worker · Phoenix LiveView · Kubernetes · BEM notation. Each carries a recorded reason in
+the book. A proposal that contradicts a principle is rejected — the principle is not.
+
+## Visual (§XII — DESIGN.md (future) carries the rest)
+
+Two rules here are architectural, not decorative:
+
+- **Page patterns.** A new screen picks from the canonical three before inventing a fourth:
+  working list (full cards, the decision is made in place, no list → detail), registry (table with
+  typed row flags, filter, pagination, one primary action), passport (identity header + actions,
+  subdomain tab bar, numbered key-value sections). Row flags are typed state —
+  `type StaffFlag = 'ok' | 'retake_photo' | 'attention'`, exhaustive switch, like shift statuses.
+- **Exploration verdict, settled.** Ledger inside, Counter on the way in — the login is
+  deliberately its own direction (narrow panel, monospace inputs, thin brand stripe). The dark
+  direction was tested and closed at both ends; light is the default and dark is a separate
+  revision.
 
 ## Memory (mneme)
 
 - Before any architectural decision — recall first, not after.
+- The corpus lives OUTSIDE the repository (`~/.mneme/…`); nothing mneme-related enters git.
 - Notes capture **decisions and findings**, not facts and not copies of the canon. Anchors —
   real, GIT-TRACKED file paths in this repository only; `docs/*` is untracked by design and
   is never an anchor.
@@ -109,8 +182,15 @@ fleet-scoped — `/staff…` (no selector; venues are data there).
 ## Quality loop (§XIII)
 
 tsc → Vitest (real Postgres) → `/impeccable audit` on changed files → `/impeccable polish`
-as the final pass → CI: check-imports · squawk · `impeccable detect src/` (exit 2 blocks the
-merge) → mneme notes; staging is reviewed by the human.
+as the final pass → the guards: `bun scripts/check-structure.ts` · `bun scripts/check-imports.ts`
+· squawk on migrations · `impeccable detect src/` (exit 2 blocks the merge) → mneme notes;
+staging is reviewed by the human.
+
+**Not yet true — there is no CI.** No `.github/workflows` exists, and squawk and impeccable detect
+are not installed. The two guards above exist and run BY HAND only. Until a CI spec lands this
+paragraph is intent, not enforcement, and §I-4 stands unpaid here — do not cite it as a check.
+Ladle and Playwright are likewise declared, not installed: the Stack and UI rules name them as the
+catalog and the e2e runner, and both arrive with the work that first needs them.
 
 ## Prohibitions
 
@@ -122,10 +202,14 @@ merge) → mneme notes; staging is reviewed by the human.
 - An overlay for a form that does not fit a drawer unscrolled; overlay width as a number.
 - Down-migrations; path renames without an anchor migration.
 - BEM and any class-naming notation — the vocabulary lives in types and components.
+- A hand-rolled UI primitive where shadcn has one; a state manager; a NOTIFY payload carrying
+  data; photo bytes routed through the server.
 
 ## Open questions (never freeze without the human)
 
-- None. New forks enter here through the plan fan, never silently.
+- Not verified: the legacy `moss` branch — the ±1h validator does not fire there at all. When
+  moss periods are ported, check that semantics separately (§IV).
+- Otherwise none. New forks enter here through the plan fan, never silently.
 
 ## Settled (formerly open)
 
@@ -139,4 +223,5 @@ merge) → mneme notes; staging is reviewed by the human.
   'ops_manager')); it does NOT disable overlap checks or week freeze. Bypass facts are
   audit-logged (an improvement over legacy). Face flags are a staff-slice concern
   (`allowClockingWithoutFacialRecognition` + admin-only button visibility) and never touch
-  hours acceptance.
+  hours acceptance: the flag turns on only with an irreplaceable avatar, resets on disable /
+  retake / avatar change, and the clocking app reads it through the external REST facade.
