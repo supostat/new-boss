@@ -1,6 +1,8 @@
 # CLAUDE.md — boss
 
-The project canon is `docs/design-book.html` (revision 0.8). This file is the digest for agents.
+The project canon is `docs/design-book.html` (revision 0.15). This file is the digest for agents.
+`docs/` is gitignored while the repository is public: the canon lives locally, is NOT tracked,
+and mneme notes must NEVER anchor to `docs/*` (untracked anchor = dead-anchor sink).
 On any divergence the canon wins and the digest gets fixed. Same for `DESIGN.md` — it is derived
 from §XII of the book.
 
@@ -21,8 +23,8 @@ The pipeline's memory is mneme, and mneme only.
 ## Stack
 
 Bun · Hono (thin HTTP adapter) · Better Auth (sessions in Postgres, isolated in `platform/auth.ts`) · tRPC inward, REST + OpenAPI (`rest/v1`) outward ·
-Zod as the single validation language · Drizzle + Postgres · queue in Postgres (pg-boss or
-Graphile Worker — open bake-off, §V) · React SPA without SSR · TanStack Router (code-based)
+Zod as the single validation language · Drizzle + Postgres · Biome (lint+format, one binary) · queue in Postgres (pg-boss; contract
+`platform/queue.ts` — defineJob + enqueue(tx, …), single surface `export const queue`) · React SPA without SSR · TanStack Router (code-based)
 + Query · Tailwind v4 `@theme` + shadcn/ui · SSE (events invalidate, they carry no data) ·
 Vitest + Playwright · Docker → Dokku → DigitalOcean.
 
@@ -69,6 +71,14 @@ fleet-scoped — `/staff…` (no selector; venues are data there).
   dialog/drawer; a shareable overlay lives in router search params, ephemeral confirms in state.
 - **Interface copy** — English, verb-first (Accept, Undo, Clock out).
   Code, identifiers, commits — English.
+- **Authz**: ordered Level tuple ('manager'…'dev', checks via atLeast = at-or-above) + orthogonal
+  Trait union OR-ed in; venue membership is temporal data (user_venues with validity windows,
+  explicit bypass for system contexts). Policies are per-slice functions (features/…/policy.ts)
+  over three shared primitives (atLeast / hasTrait / inVenue) — no central policy file, no policy
+  engine, no rights-in-DB, no RLS. Static part (level+traits) is reusable in UI; object predicates
+  are server-only, UI receives computed flags in data.
+- **Code comments**: never reference the book (§), phases, or specs — code explains itself;
+  the provenance of decisions lives in mneme notes and specs.
 - **Tests**: a red test before the change; the bulk are integration tests against a real
   Postgres (transaction rolled back per test); no database mocks.
 
@@ -76,7 +86,8 @@ fleet-scoped — `/staff…` (no selector; venues are data there).
 
 - Before any architectural decision — recall first, not after.
 - Notes capture **decisions and findings**, not facts and not copies of the canon. Anchors —
-  real file paths in this repository only.
+  real, GIT-TRACKED file paths in this repository only; `docs/*` is untracked by design and
+  is never an anchor.
 - Renaming a path = an anchor migration: never rename without walking the notes.
 - Note-worthy events: extracting a component into `ui/domain/`; a conflict after a dependency
   upgrade; a recurring impeccable-audit finding; a deliberate choice the detector flags
@@ -114,6 +125,18 @@ merge) → mneme notes; staging is reviewed by the human.
 
 ## Open questions (never freeze without the human)
 
-- Semantics of a shift candidate's `bypass` — hypothesis: skipping face/photo evidence
-  verification; awaiting a check against the Rails models (§IV).
-- Queue: pg-boss vs Graphile Worker — settled by the bake-off (§V).
+- None. New forks enter here through the plan fan, never silently.
+
+## Settled (formerly open)
+
+- Queue: pg-boss won the §V bake-off on the shared contract suite (transactionality · retries ·
+  observability): tx-client enqueue into its insert + a documented, SQL-readable `pgboss` schema
+  vs Graphile Worker's privatized tables. The loser is fully erased; the contract suite stays as
+  the living specification of the queue.
+
+- Candidate `bypass` → `originalTimesBypass`: a permission-gated bypass of the ±1 hour guard
+  against the original clock times snapshot (hasTrait('payroll_manager') || atLeast(level,
+  'ops_manager')); it does NOT disable overlap checks or week freeze. Bypass facts are
+  audit-logged (an improvement over legacy). Face flags are a staff-slice concern
+  (`allowClockingWithoutFacialRecognition` + admin-only button visibility) and never touch
+  hours acceptance.
