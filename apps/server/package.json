@@ -4,6 +4,7 @@
   "dependencies": {
     "@boss/db": "workspace:*",
     "@boss/shared": "workspace:*",
+    "@trpc/server": "^11.18.0",
     "better-auth": "^1.6.26",
     "hono": "^4.13.1",
     "pg": "^8.22.0",

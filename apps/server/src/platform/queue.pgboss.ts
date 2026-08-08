@@ -1,15 +1,13 @@
+import { databaseUrl } from "@boss/db";
 import type { ClientBase } from "pg";
 import { Client } from "pg";
 import { PgBoss } from "pg-boss";
 import type { EnqueueOptions, JobDefinition, QueueAdapter } from "./queue";
 
-// Local compose database.
-const DATABASE_URL = "postgres://boss:boss@localhost:5432/boss";
-
 class PgBossAdapter implements QueueAdapter {
   readonly label = "pg-boss";
-  private readonly boss = new PgBoss(DATABASE_URL);
-  private readonly probe = new Client({ connectionString: DATABASE_URL });
+  private readonly boss = new PgBoss(databaseUrl());
+  private readonly probe = new Client({ connectionString: databaseUrl() });
 
   async install(): Promise<void> {
     await this.boss.start();

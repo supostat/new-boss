@@ -1,3 +1,9 @@
 import { defineConfig } from "vitest/config";
 
-export default defineConfig({});
+// Integration tests share one live compose Postgres and one job queue;
+// sequential files keep their rows and queue state from racing each other.
+export default defineConfig({
+  test: {
+    fileParallelism: false,
+  },
+});
