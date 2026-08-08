@@ -2,8 +2,13 @@
   "name": "@boss/server",
   "private": true,
   "dependencies": {
+    "@boss/db": "workspace:*",
+    "@boss/shared": "workspace:*",
+    "better-auth": "^1.6.26",
+    "hono": "^4.13.1",
     "pg": "^8.22.0",
-    "pg-boss": "^12.27.0"
+    "pg-boss": "^12.27.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/pg": "^8.20.4"

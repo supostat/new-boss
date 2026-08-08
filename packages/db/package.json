@@ -1,4 +1,14 @@
 {
   "name": "@boss/db",
-  "private": true
+  "private": true,
+  "main": "./client.ts",
+  "dependencies": {
+    "@boss/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.4",
+    "drizzle-kit": "^0.31.10"
+  }
 }
