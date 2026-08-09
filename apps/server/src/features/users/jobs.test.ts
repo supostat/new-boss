@@ -1,20 +1,29 @@
 import { createDatabaseClient } from "@boss/db";
 import { invite } from "@boss/db/schema/invites";
 import { eq } from "drizzle-orm";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { createUser } from "../../platform/auth";
 import { inviteEmailJob } from "./jobs";
 import { hashToken } from "./service";
 
 const { db, pool } = createDatabaseClient();
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 afterAll(async () => {
   await pool.end();
 });
+
+const mailpitApi = "http://localhost:8026/api/v1";
+
+async function countLettersFor(email: string): Promise<number> {
+  const response = await fetch(
+    `${mailpitApi}/search?query=${encodeURIComponent(`to:${email}`)}`,
+  );
+  if (!response.ok) {
+    throw new Error(`mailpit search failed: ${response.status}`);
+  }
+  const result = (await response.json()) as { messages: unknown[] };
+  return result.messages.length;
+}
 
 async function insertPendingInvite(): Promise<{ id: string; email: string }> {
   const email = `${crypto.randomUUID()}@jobs.test`;
@@ -44,7 +53,6 @@ async function insertPendingInvite(): Promise<{ id: string; email: string }> {
 describe("inviteEmailJob", () => {
   it("delivers once and survives replay", async () => {
     const pending = await insertPendingInvite();
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const payload = {
       inviteId: pending.id,
       to: pending.email,
@@ -58,9 +66,9 @@ describe("inviteEmailJob", () => {
       .from(invite)
       .where(eq(invite.id, pending.id));
     expect(afterFirst[0]?.sentAt).not.toBeNull();
-    expect(log).toHaveBeenCalledTimes(1);
+    await expect.poll(() => countLettersFor(pending.email)).toBe(1);
 
     await inviteEmailJob.handle(payload);
-    expect(log).toHaveBeenCalledTimes(1);
+    expect(await countLettersFor(pending.email)).toBe(1);
   });
 });

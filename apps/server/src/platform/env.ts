@@ -14,6 +14,8 @@ const environmentSchema = z.object({
     .string()
     .default("http://localhost:5173")
     .transform((origins) => origins.split(",").map((origin) => origin.trim())),
+  SMTP_URL: z.url().default("smtp://localhost:1026"),
+  MAIL_FROM: z.string().default("boss <noreply@localhost>"),
   PORT: z.coerce.number().int().positive().default(3000),
 });
 

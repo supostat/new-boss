@@ -1,3 +1,6 @@
+import nodemailer from "nodemailer";
+import { env } from "./env";
+
 export interface InviteEmail {
   to: string;
   inviteUrl: string;
@@ -7,11 +10,16 @@ export interface Mailer {
   sendInvite(email: InviteEmail): Promise<void>;
 }
 
-// Logging transport: the raw invite link lands in server logs by design —
-// this log line IS the delivery until a real transport replaces the
-// internals of this file. Nothing outside imports anything but `mailer`.
+const transport = nodemailer.createTransport(env.SMTP_URL);
+
+// The raw invite link travels only inside the letter; nothing here may log it.
 export const mailer: Mailer = {
   async sendInvite(email: InviteEmail): Promise<void> {
-    console.log(`[mailer] invite for ${email.to}: ${email.inviteUrl}`);
+    await transport.sendMail({
+      from: env.MAIL_FROM,
+      to: email.to,
+      subject: "Accept your invite",
+      text: `Accept your invite: ${email.inviteUrl}`,
+    });
   },
 };
