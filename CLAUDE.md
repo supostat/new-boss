@@ -1,6 +1,6 @@
 # CLAUDE.md — boss
 
-The project canon is `docs/design-book.html` (revision 0.16). This file is the digest for agents.
+The project canon is `docs/design-book.html` (revision 0.17). This file is the digest for agents.
 `docs/` is gitignored while the repository is public: the canon lives locally, is NOT tracked,
 and mneme notes must NEVER anchor to `docs/*` (untracked anchor = dead-anchor sink).
 On any divergence the canon wins and the digest gets fixed. Same for `DESIGN.md` — it is derived
@@ -63,9 +63,8 @@ Routing is code, not files: `routes.tsx` per slice, assembled in `router.tsx`.
 - **Imports** (enforced by `scripts/check-imports.ts`): slices never import each other —
   only via `platform/` or events; `@boss/db` is server-only; `ui/` never imports `features/`;
   `better-auth` is imported ONLY in `platform/auth.ts` — slices see `Session` / the policy
-  primitives (`atLeast` / `hasTrait` / `inVenue`) / role procedures, never the library.
-  `user ≠ staff`: users log into the portal, staff clock at venues; the optional link lives on
-  the staff side.
+  primitives (atLeast / hasTrait / inVenue) / role procedures, never the library. `user ≠ staff`: users log into the portal, staff clock
+  at venues; the optional link lives on the staff side.
 - **Dependencies**: latest stable releases; lockfile in git; betas and RCs never enter the
   production branch.
 - **Toolchain** (frozen by spec): the four script names `typecheck` · `test` · `lint` · `format`
@@ -107,6 +106,18 @@ Routing is code, not files: `routes.tsx` per slice, assembled in `router.tsx`.
   drawer (~7–12 fields, sticky footer, discard guard) / inline. 13+ fields = a passport-form
   PAGE with its own route, never an overlay. Editing complex entities is per-section via
   dialog/drawer; a shareable overlay lives in router search params, ephemeral confirms in state.
+- **Motion & toasts**: three motion tokens only (`--motion-fast` 100 / `--motion-base` 140 /
+  `--motion-slow` 160ms) in tokens.css; enter at base/slow ease-out, EXIT ALWAYS FAST; inline
+  expansion never animates; `prefers-reduced-motion` kills all; motion is declarative (Radix
+  data-state + `@theme` animations), never hand-written JS. Toast is the FIFTH genre — feedback,
+  not an overlay: surface card with a semantic 3px left edge (success / pending / error),
+  bottom-right, a collapsed DECK in the sonner gesture (offset+scale, ≤3 visible, hover expands
+  to a list); durations are named constants — success ~5s, pending lives until its outcome (not
+  a timer), errors are STICKY until dismissed, yet swipe-to-dismiss closes ANY toast, sticky
+  included; no Undo slot (a toast confirms an outcome and never promises reversibility — undoing
+  a disable is not a plain enable). sonner via shadcn, re-clothed in tokens; the only call point
+  is our `toast()` from `ui/`; a hand-rolled toaster is forbidden. Depth (shadow) belongs to
+  overlays and toasts only.
 - **Interface copy** — English, verb-first (Accept, Undo, Clock out).
   Code, identifiers, commits — English.
 - **Authz**: ordered Level tuple ('manager'…'dev', checks via atLeast = at-or-above) + orthogonal
@@ -119,8 +130,8 @@ Routing is code, not files: `routes.tsx` per slice, assembled in `router.tsx`.
   the provenance of decisions lives in mneme notes and specs.
 - **Tests**: a red test before the change; the bulk are integration tests against a real
   Postgres (transaction rolled back per test); no database mocks. An hourglass, not a pyramid:
-  ~70% integration (the slice end to end — procedure → service → transaction → job →
-  NOTIFY), ~20% unit (pure logic: the three times, breaks, shifts crossing midnight), ~10% e2e.
+  ~70% integration (the slice end to end — procedure → service → transaction → job → NOTIFY),
+  ~20% unit (pure logic: reconciling the three times, breaks, shifts crossing midnight), ~10% e2e.
   The test lives in the slice, beside the code it specifies.
 
 ## Deploy (§X)
@@ -140,7 +151,7 @@ rights-in-data (CASL, casbin, Postgres RLS) · testcontainers · ESLint+Prettier
 Graphile Worker · Phoenix LiveView · Kubernetes · BEM notation. Each carries a recorded reason in
 the book. A proposal that contradicts a principle is rejected — the principle is not.
 
-## Visual (§XII — DESIGN.md (future) carries the rest)
+## Visual (§XII — DESIGN.md carries the rest)
 
 Two rules here are architectural, not decorative:
 
@@ -187,10 +198,9 @@ as the final pass → the guards: `bun scripts/check-structure.ts` · `bun scrip
 staging is reviewed by the human.
 
 **Not yet true — there is no CI.** No `.github/workflows` exists, and squawk and impeccable detect
-are not installed. The two guards above exist and run BY HAND only. Until a CI spec lands this
+are not installed. The two guards above exist and run BY HAND only. Ladle and Playwright are declared in the
+stack, Playwright now exists (e2e), Ladle is not yet installed. Until a CI spec lands this
 paragraph is intent, not enforcement, and §I-4 stands unpaid here — do not cite it as a check.
-Ladle and Playwright are likewise declared, not installed: the Stack and UI rules name them as the
-catalog and the e2e runner, and both arrive with the work that first needs them.
 
 ## Prohibitions
 
@@ -203,7 +213,8 @@ catalog and the e2e runner, and both arrive with the work that first needs them.
 - Down-migrations; path renames without an anchor migration.
 - BEM and any class-naming notation — the vocabulary lives in types and components.
 - A hand-rolled UI primitive where shadcn has one; a state manager; a NOTIFY payload carrying
-  data; photo bytes routed through the server.
+  data; photo bytes routed through the server; a hand-rolled toaster; motion values outside
+  the three motion tokens.
 
 ## Open questions (never freeze without the human)
 
