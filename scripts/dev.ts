@@ -39,6 +39,90 @@ async function forwardLines(
   }
 }
 
+// Leftovers of a previous dev run are stopped before starting; anything
+// foreign on a dev port is a named refusal — this script never kills what
+// it did not shape. Ports mirror the env defaults; 5173 is vite's own.
+const devPorts = [
+  Number(process.env.PORT ?? 3000),
+  Number(process.env.WORKER_PORT ?? 3001),
+  5173,
+];
+
+const ourProcessMarkers = [
+  "apps/server/src/main.ts",
+  "apps/server/src/worker.ts",
+  "apps/web/vite.config.ts",
+];
+
+interface PortHolder {
+  readonly port: number;
+  readonly pid: number;
+  readonly command: string;
+}
+
+function listeningPids(port: number): number[] {
+  const result = Bun.spawnSync([
+    "lsof",
+    "-nP",
+    `-tiTCP:${port}`,
+    "-sTCP:LISTEN",
+  ]);
+  const text = result.stdout.toString().trim();
+  if (text === "") {
+    return [];
+  }
+  return text
+    .split("\n")
+    .map((line) => Number.parseInt(line.trim(), 10))
+    .filter((pid) => Number.isFinite(pid));
+}
+
+function commandOf(pid: number): string {
+  const result = Bun.spawnSync(["ps", "-o", "command=", "-p", String(pid)]);
+  return result.stdout.toString().trim();
+}
+
+function collectHolders(): PortHolder[] {
+  return devPorts.flatMap((port) =>
+    listeningPids(port).map((pid) => ({ port, pid, command: commandOf(pid) })),
+  );
+}
+
+const holders = collectHolders();
+const foreignHolders = holders.filter(
+  (holder) => !ourProcessMarkers.some((mark) => holder.command.includes(mark)),
+);
+if (foreignHolders.length > 0) {
+  for (const holder of foreignHolders) {
+    console.error(
+      `[dev] port ${holder.port} is held by a foreign process ${holder.pid}: ${holder.command}`,
+    );
+  }
+  console.error("[dev] refusing to kill it; free the port and retry");
+  process.exit(1);
+}
+for (const holder of holders) {
+  console.log(
+    `[dev] stopping leftover ${holder.pid} on :${holder.port} (${holder.command})`,
+  );
+  process.kill(holder.pid, "SIGTERM");
+}
+if (holders.length > 0) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline && collectHolders().length > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  const stubborn = collectHolders();
+  for (const holder of stubborn) {
+    console.error(
+      `[dev] port ${holder.port} still held by ${holder.pid} after SIGTERM; giving up`,
+    );
+  }
+  if (stubborn.length > 0) {
+    process.exit(1);
+  }
+}
+
 const running = definitions.map((definition) => {
   const child = Bun.spawn([...definition.command], {
     cwd: repositoryRoot,
