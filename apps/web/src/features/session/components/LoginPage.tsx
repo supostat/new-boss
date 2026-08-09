@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { signIn } from "../api";
+import { signIn } from "../../../session";
 
 // Counter genre: a clerk's entrance — narrow panel, thin brand bar, mono
 // labels and inputs. The mono inputs are a peculiarity of this page alone

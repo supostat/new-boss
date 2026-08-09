@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createDatabaseClient } from "@boss/db";
+import { user } from "@boss/db/schema/auth";
 import type { Invite } from "@boss/db/schema/invites";
 import { invite } from "@boss/db/schema/invites";
 import type { Level } from "@boss/shared/domain/authz";
 import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { createUser } from "../../platform/auth";
+import { createUser, revokeUserSessions } from "../../platform/auth";
 import { env } from "../../platform/env";
 import { queue } from "../../platform/queue";
 import type { InviteEmailPayload } from "./jobs";
@@ -135,10 +136,18 @@ export interface AcceptInvite {
   name: string;
 }
 
+export interface AcceptedInvite {
+  userId: string;
+  email: string;
+}
+
 // The atomic claim guarantees one-time use before any user is created; a
 // claim that lands after a createUser failure is resolved by resend, never
-// by unclaiming.
-export async function acceptInvite(input: AcceptInvite): Promise<string> {
+// by unclaiming. The email comes back so the accept page can sign the
+// invited user straight in.
+export async function acceptInvite(
+  input: AcceptInvite,
+): Promise<AcceptedInvite> {
   const found = await inviteByTokenHash(db, hashToken(input.token));
   if (found === undefined) {
     throw new InviteError("invalid");
@@ -157,10 +166,25 @@ export async function acceptInvite(input: AcceptInvite): Promise<string> {
   if (claimed.length === 0) {
     throw new InviteError("already-accepted");
   }
-  return createUser({
+  const userId = await createUser({
     email: found.email,
     password: input.password,
     name: input.name,
     level: found.level,
   });
+  return { userId, email: found.email };
+}
+
+// Disabling is a security act: the mark lands, the auth seam revokes every
+// live session, and the sign-in hook refuses new ones.
+export async function disableUser(userId: string): Promise<void> {
+  await db
+    .update(user)
+    .set({ disabledAt: new Date() })
+    .where(eq(user.id, userId));
+  await revokeUserSessions(userId);
+}
+
+export async function enableUser(userId: string): Promise<void> {
+  await db.update(user).set({ disabledAt: null }).where(eq(user.id, userId));
 }

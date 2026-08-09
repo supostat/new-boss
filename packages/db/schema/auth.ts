@@ -14,6 +14,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   level: text("level", { enum: LEVELS }).notNull(),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
 });
 
 export const session = pgTable(

@@ -9,6 +9,7 @@
     "hono": "^4.13.1",
     "pg": "^8.22.0",
     "pg-boss": "^12.27.0",
+    "superjson": "^2.2.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {

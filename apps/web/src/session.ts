@@ -2,6 +2,7 @@ import type { Level } from "@boss/shared/domain/authz";
 import { useQuery } from "@tanstack/react-query";
 
 export interface SessionUser {
+  id: string;
   email: string;
   name: string;
   level: Level;

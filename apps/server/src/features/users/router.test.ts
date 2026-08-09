@@ -76,6 +76,56 @@ describe("invite procedures", () => {
     expect(pending.some((row) => row.id === created.id)).toBe(true);
   });
 
+  it("rejects sessionless management as UNAUTHORIZED", async () => {
+    const caller = createCaller({ session: null });
+    await expect(caller.users.list()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+    await expect(
+      caller.users.disable({ userId: "irrelevant" }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("rejects manager management as FORBIDDEN", async () => {
+    const caller = createCaller({ session: managerSession });
+    await expect(caller.users.list()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(
+      caller.users.disable({ userId: "irrelevant" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects self-disable as FORBIDDEN", async () => {
+    const caller = createCaller({ session: adminSession });
+    await expect(
+      caller.users.disable({ userId: adminSession.user.id }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("lets an admin disable and enable another user, visible in the list", async () => {
+    const caller = createCaller({ session: adminSession });
+    const email = `${crypto.randomUUID()}@router.test`;
+    const targetId = await createUser({
+      email,
+      password: "sufficiently-long-target-password",
+      name: "Disable Target",
+      level: "manager",
+    });
+
+    await caller.users.disable({ userId: targetId });
+    const afterDisable = await caller.users.list();
+    expect(
+      afterDisable.find((row) => row.id === targetId)?.disabledAt,
+    ).not.toBeNull();
+
+    await caller.users.enable({ userId: targetId });
+    const afterEnable = await caller.users.list();
+    expect(
+      afterEnable.find((row) => row.id === targetId)?.disabledAt,
+    ).toBeNull();
+  });
+
   it("lets a sessionless accept reach invite validation", async () => {
     const caller = createCaller({ session: null });
     await expect(

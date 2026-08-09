@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import type { SessionUser } from "../features/session/api";
-import { signOut } from "../features/session/api";
+import { Link, useNavigate } from "@tanstack/react-router";
+import type { SessionUser } from "../session";
+import { signOut } from "../session";
 
 export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -16,7 +16,15 @@ export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <header className="flex items-center justify-between bg-brand px-4 py-2 text-surface">
-        <span className="font-display text-lg font-bold">boss</span>
+        <div className="flex items-center gap-5">
+          <span className="font-display text-lg font-bold">boss</span>
+          <Link
+            to="/users"
+            className="text-sm font-medium opacity-90 hover:opacity-100"
+          >
+            Users
+          </Link>
+        </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-[11px] opacity-90">
             {props.user.email}

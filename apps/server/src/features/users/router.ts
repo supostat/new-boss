@@ -1,11 +1,15 @@
 import { createDatabaseClient } from "@boss/db";
 import { LEVELS } from "@boss/shared/domain/authz";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminProcedure, publicProcedure, router } from "../../platform/trpc";
-import { pendingInvites } from "./queries";
+import { canDisableUser } from "./policy";
+import { listUsers, pendingInvites } from "./queries";
 import {
   acceptInvite,
   createInvite,
+  disableUser,
+  enableUser,
   resendInvite,
   revokeInvite,
 } from "./service";
@@ -13,6 +17,19 @@ import {
 const { db } = createDatabaseClient();
 
 export const usersRouter = router({
+  list: adminProcedure.query(() => listUsers(db)),
+  disable: adminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .mutation(({ input, ctx }) => {
+      const actor = ctx.session.user;
+      if (!canDisableUser(actor.level, actor.id, input.userId)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return disableUser(input.userId);
+    }),
+  enable: adminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .mutation(({ input }) => enableUser(input.userId)),
   invite: router({
     create: adminProcedure
       .input(z.object({ email: z.email(), level: z.enum(LEVELS) }))

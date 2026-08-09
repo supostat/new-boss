@@ -1,15 +1,17 @@
 import { createDatabaseClient } from "@boss/db";
-import { user } from "@boss/db/schema/auth";
+import { session, user } from "@boss/db/schema/auth";
 import { invite } from "@boss/db/schema/invites";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createUser } from "../../platform/auth";
+import { auth, createUser } from "../../platform/auth";
 import { queue } from "../../platform/queue";
 import { inviteEmailJob } from "./jobs";
 import {
   acceptInvite,
   createInvite,
+  disableUser,
+  enableUser,
   hashToken,
   InviteError,
   resendInvite,
@@ -113,13 +115,17 @@ describe("acceptInvite", () => {
     });
     const rawToken = await rawTokenFromJobPayload(created.id);
 
-    const userId = await acceptInvite({
+    const accepted = await acceptInvite({
       token: rawToken,
       password: "sufficiently-long-invited-password",
       name: "Invited Manager",
     });
+    expect(accepted.email).toBe(created.email);
 
-    const userRows = await db.select().from(user).where(eq(user.id, userId));
+    const userRows = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, accepted.userId));
     expect(userRows[0]?.level).toBe("manager");
 
     await expect(
@@ -167,6 +173,41 @@ describe("acceptInvite", () => {
         name: "Revoked Guest",
       }),
     ).rejects.toThrowError(new InviteError("invalid"));
+  });
+});
+
+describe("disableUser / enableUser", () => {
+  it("kills live sessions, blocks fresh sign-in, and enable restores it", async () => {
+    const email = `${crypto.randomUUID()}@service.test`;
+    const password = "sufficiently-long-lockout-password";
+    const userId = await createUser({
+      email,
+      password,
+      name: "Lockout Target",
+      level: "manager",
+    });
+
+    await auth.api.signInEmail({ body: { email, password } });
+    const liveSessions = await db
+      .select()
+      .from(session)
+      .where(eq(session.userId, userId));
+    expect(liveSessions.length).toBeGreaterThan(0);
+
+    await disableUser(userId);
+
+    const afterDisable = await db
+      .select()
+      .from(session)
+      .where(eq(session.userId, userId));
+    expect(afterDisable).toHaveLength(0);
+    await expect(
+      auth.api.signInEmail({ body: { email, password } }),
+    ).rejects.toThrowError();
+
+    await enableUser(userId);
+    const restored = await auth.api.signInEmail({ body: { email, password } });
+    expect(restored.user.id).toBe(userId);
   });
 });
 

@@ -1,4 +1,5 @@
 import type { createDatabaseClient } from "@boss/db";
+import { user } from "@boss/db/schema/auth";
 import type { Invite } from "@boss/db/schema/invites";
 import { invite } from "@boss/db/schema/invites";
 import { eq, isNull } from "drizzle-orm";
@@ -26,4 +27,8 @@ export async function inviteByTokenHash(
 
 export async function pendingInvites(db: Database): Promise<Invite[]> {
   return db.select().from(invite).where(isNull(invite.acceptedAt));
+}
+
+export async function listUsers(db: Database) {
+  return db.select().from(user).orderBy(user.createdAt);
 }

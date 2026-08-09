@@ -1,7 +1,8 @@
 import { createRoute, createRouter, redirect } from "@tanstack/react-router";
-import { fetchSession, useSession } from "./features/session/api";
 import { loginRoute } from "./features/session/routes";
+import { acceptInviteRoute, usersRoute } from "./features/users/routes";
 import { rootRoute } from "./rootRoute";
+import { fetchSession, useSession } from "./session";
 import { Frame } from "./shell/Frame";
 
 function Landing() {
@@ -35,7 +36,12 @@ const indexRoute = createRoute({
   component: Landing,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  loginRoute,
+  usersRoute,
+  acceptInviteRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

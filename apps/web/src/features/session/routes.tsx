@@ -1,6 +1,6 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { rootRoute } from "../../rootRoute";
-import { fetchSession } from "./api";
+import { fetchSession } from "../../session";
 import { LoginPage } from "./components/LoginPage";
 
 export const loginRoute = createRoute({

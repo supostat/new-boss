@@ -1,5 +1,6 @@
 import { atLeast } from "@boss/shared/domain/authz";
 import { initTRPC, TRPCError } from "@trpc/server";
+import superjson from "superjson";
 import type { Session } from "./auth";
 import { auth } from "./auth";
 
@@ -14,7 +15,9 @@ export async function createTrpcContext(
   return { session };
 }
 
-const t = initTRPC.context<TrpcContext>().create();
+// superjson keeps Date a Date across the wire — without it the types would
+// promise what JSON cannot deliver.
+const t = initTRPC.context<TrpcContext>().create({ transformer: superjson });
 
 export const router = t.router;
 export const createCallerFactory = t.createCallerFactory;
