@@ -17,6 +17,10 @@ export interface EnqueueOptions {
   readonly maxAttempts?: number;
 }
 
+export interface StopOptions {
+  readonly graceful?: boolean;
+}
+
 // enqueue rides the CALLER's transaction: the job becomes visible only if
 // that transaction commits. pending/dead answer from raw SQL over the
 // adapter's own tables.
@@ -30,7 +34,7 @@ export interface QueueAdapter {
     options?: EnqueueOptions,
   ): Promise<void>;
   work(jobs: readonly JobDefinition<never>[]): Promise<void>;
-  stop(): Promise<void>;
+  stop(options?: StopOptions): Promise<void>;
   pending(name: string): Promise<number>;
   dead(name: string): Promise<number>;
 }

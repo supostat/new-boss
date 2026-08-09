@@ -2,7 +2,20 @@ import { databaseUrl } from "@boss/db";
 import type { ClientBase } from "pg";
 import { Client } from "pg";
 import { PgBoss } from "pg-boss";
-import type { EnqueueOptions, JobDefinition, QueueAdapter } from "./queue";
+import type {
+  EnqueueOptions,
+  JobDefinition,
+  QueueAdapter,
+  StopOptions,
+} from "./queue";
+
+// pg-boss polls every 2s by default; tests and dev poll-wait on delivery,
+// and the tighter interval keeps that latency low.
+const POLLING_INTERVAL_SECONDS = 0.5;
+
+// Hard-stop budget for fast teardown; the graceful path rides pg-boss
+// defaults instead.
+const FAST_STOP_TIMEOUT_MS = 5000;
 
 class PgBossAdapter implements QueueAdapter {
   readonly label = "pg-boss";
@@ -32,13 +45,14 @@ class PgBossAdapter implements QueueAdapter {
     });
   }
 
+  // Accumulated jobs survive a worker restart: work() only ensures the
+  // queues exist and subscribes — it never deletes.
   async work(jobs: readonly JobDefinition<never>[]): Promise<void> {
     for (const job of jobs) {
       await this.boss.createQueue(job.name);
-      await this.boss.deleteAllJobs(job.name);
       await this.boss.work(
         job.name,
-        { pollingIntervalSeconds: 0.5 },
+        { pollingIntervalSeconds: POLLING_INTERVAL_SECONDS },
         async (batch) => {
           for (const item of batch) {
             await job.handle(item.data as never);
@@ -48,8 +62,12 @@ class PgBossAdapter implements QueueAdapter {
     }
   }
 
-  async stop(): Promise<void> {
-    await this.boss.stop({ graceful: false, timeout: 5000 });
+  async stop(options?: StopOptions): Promise<void> {
+    if (options?.graceful === true) {
+      await this.boss.stop({ graceful: true });
+    } else {
+      await this.boss.stop({ graceful: false, timeout: FAST_STOP_TIMEOUT_MS });
+    }
     await this.probe.end();
   }
 

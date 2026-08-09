@@ -17,6 +17,7 @@ const environmentSchema = z.object({
   SMTP_URL: z.url().default("smtp://localhost:1026"),
   MAIL_FROM: z.string().default("boss <noreply@localhost>"),
   PORT: z.coerce.number().int().positive().default(3000),
+  WORKER_PORT: z.coerce.number().int().positive().default(3001),
 });
 
 export const env = environmentSchema.parse(process.env);

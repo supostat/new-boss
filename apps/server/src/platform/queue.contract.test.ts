@@ -48,6 +48,7 @@ for (const adapter of candidates) {
   describe(`queue contract: ${adapter.label}`, () => {
     const inviteLog: InvitePayload[] = [];
     let failCalls = 0;
+    let stoppedByDrainCase = false;
 
     const inviteEmail = defineJob<InvitePayload>(
       "auth.invite_email",
@@ -62,11 +63,21 @@ for (const adapter of candidates) {
 
     beforeAll(async () => {
       await adapter.install();
+      // Production work() never wipes queues, so suite determinism is owned
+      // here: leftovers of the probe queues are deleted before subscribing.
+      const cleaner = new Client({ connectionString: DATABASE_URL });
+      await cleaner.connect();
+      await cleaner.query("DELETE FROM pgboss.job WHERE name = ANY($1)", [
+        [inviteEmail.name, alwaysFails.name, "auth.slow_drain"],
+      ]);
+      await cleaner.end();
       await adapter.work([inviteEmail, alwaysFails]);
     }, 30_000);
 
     afterAll(async () => {
-      await adapter.stop();
+      if (!stoppedByDrainCase) {
+        await adapter.stop();
+      }
     }, 15_000);
 
     it("leaves nothing behind when the enqueueing transaction rolls back", async () => {
@@ -121,5 +132,33 @@ for (const adapter of candidates) {
       expect(await adapter.pending(inviteEmail.name)).toBe(0);
       expect(await adapter.dead(alwaysFails.name)).toBe(1);
     }, 10_000);
+
+    // Runs last and owns the final stop: stopping the singleton boss ends
+    // processing for the whole file.
+    it("graceful stop drains the active job before resolving", async () => {
+      let releaseLatch = (): void => {};
+      const latch = new Promise<void>((resolve) => {
+        releaseLatch = resolve;
+      });
+      let handlerStarted = false;
+      let handlerCompleted = false;
+      const slowDrain = defineJob<unknown>("auth.slow_drain", async () => {
+        handlerStarted = true;
+        await latch;
+        handlerCompleted = true;
+      });
+      await adapter.work([slowDrain]);
+      await withTransaction("COMMIT", async (tx) => {
+        await adapter.enqueue(tx, slowDrain.name, { reason: "drain" });
+      });
+      expect(await eventually(() => handlerStarted, 10_000)).toBe(true);
+
+      const stopping = adapter.stop({ graceful: true });
+      expect(handlerCompleted).toBe(false);
+      releaseLatch();
+      await stopping;
+      stoppedByDrainCase = true;
+      expect(handlerCompleted).toBe(true);
+    }, 30_000);
   });
 }

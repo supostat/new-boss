@@ -16,8 +16,11 @@ const createCaller = createCallerFactory(appRouter);
 
 beforeAll(async () => {
   await queue.install();
-  // The worker starts BEFORE any invite exists: work() clears the queue on
-  // startup, so an invite created first would be wiped, not delivered.
+  // Production work() never wipes queues; suite determinism is owned here:
+  // leftovers of this queue are deleted before the worker subscribes.
+  await db.execute(
+    sql`delete from pgboss.job where name = ${inviteEmailJob.name}`,
+  );
   await queue.work([inviteEmailJob]);
 });
 
