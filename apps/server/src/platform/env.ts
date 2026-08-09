@@ -14,6 +14,7 @@ const environmentSchema = z.object({
     .string()
     .default("http://localhost:5173")
     .transform((origins) => origins.split(",").map((origin) => origin.trim())),
+  PORT: z.coerce.number().int().positive().default(3000),
 });
 
 export const env = environmentSchema.parse(process.env);

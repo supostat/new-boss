@@ -42,8 +42,8 @@ const violations: string[] = [];
 
 for (const path of sources) {
   const source = readFileSync(path, "utf8");
-  for (const specifier of importSpecifiers(source)) {
-    const violation = classifyImport(path, specifier);
+  for (const { specifier, typeOnly } of importSpecifiers(source)) {
+    const violation = classifyImport(path, specifier, typeOnly);
     if (violation !== null) {
       violations.push(
         `${path}: ${specifier} — ${violation.rule}: ${violation.reason}`,

@@ -10,6 +10,7 @@ export interface Violation {
 }
 
 const MODULE_STATEMENT = /^(?:import\b|export\s*(?:type\s*)?\{|export\s*\*)/;
+const TYPE_ONLY_STATEMENT = /^(?:import\s+type\b|export\s+type\s*\{)/;
 const FROM_SPECIFIER = /\bfrom\s*["']([^"']+)["']/;
 const SIDE_EFFECT_SPECIFIER = /^import\s*["']([^"']+)["']/;
 
@@ -28,8 +29,16 @@ function hasOpenBrace(statement: string): boolean {
   return depth > 0;
 }
 
-export function importSpecifiers(source: string): string[] {
-  const specifiers: string[] = [];
+export interface ImportStatement {
+  specifier: string;
+  typeOnly: boolean;
+}
+
+// Type-only-ness is a STATEMENT property: a mixed `import { type A, B }`
+// counts as a value import — erasure applies to bindings, and a statement
+// that survives compilation must not be blessed as types-only.
+export function importSpecifiers(source: string): ImportStatement[] {
+  const statements: ImportStatement[] = [];
   let statement = "";
   for (const rawLine of source.split("\n")) {
     const line = rawLine.trim();
@@ -39,10 +48,15 @@ export function importSpecifiers(source: string): string[] {
     const specifier =
       FROM_SPECIFIER.exec(statement)?.[1] ??
       SIDE_EFFECT_SPECIFIER.exec(statement)?.[1];
-    if (specifier !== undefined) specifiers.push(specifier);
+    if (specifier !== undefined) {
+      statements.push({
+        specifier,
+        typeOnly: TYPE_ONLY_STATEMENT.test(statement),
+      });
+    }
     statement = "";
   }
-  return specifiers;
+  return statements;
 }
 
 function resolveRelative(fromFile: string, specifier: string): string | null {
@@ -61,6 +75,7 @@ function sliceOf(path: string): string | null {
 export function classifyImport(
   filePath: string,
   specifier: string,
+  typeOnly = false,
 ): Violation | null {
   if (isPackage(specifier, "better-auth") && filePath !== AUTH_MODULE) {
     return {
@@ -73,6 +88,17 @@ export function classifyImport(
     return {
       rule: "db-server-only",
       reason: "@boss/db is server-only and never enters the web app",
+    };
+  }
+
+  if (
+    filePath.startsWith(WEB_APP) &&
+    isPackage(specifier, "@boss/server") &&
+    !typeOnly
+  ) {
+    return {
+      rule: "server-types-only",
+      reason: "@boss/server enters the web app as types only",
     };
   }
 

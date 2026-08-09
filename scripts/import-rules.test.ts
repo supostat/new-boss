@@ -2,28 +2,49 @@ import { describe, expect, it } from "vitest";
 import { classifyImport, importSpecifiers } from "./import-rules";
 
 describe("importSpecifiers", () => {
-  it("reads a value import", () => {
-    expect(importSpecifiers('import { a } from "./a";')).toEqual(["./a"]);
-  });
-
-  it("reads a type-only import", () => {
-    expect(importSpecifiers('import type { A } from "./a";')).toEqual(["./a"]);
-  });
-
-  it("reads a side-effect import", () => {
-    expect(importSpecifiers('import "./side-effect";')).toEqual([
-      "./side-effect",
+  it("reads a value import as value", () => {
+    expect(importSpecifiers('import { a } from "./a";')).toEqual([
+      { specifier: "./a", typeOnly: false },
     ]);
   });
 
-  it("reads an import wrapped across lines", () => {
-    const source = 'import {\n  first,\n  second,\n} from "./wide";';
-    expect(importSpecifiers(source)).toEqual(["./wide"]);
+  it("reads a type-only import as type-only", () => {
+    expect(importSpecifiers('import type { A } from "./a";')).toEqual([
+      { specifier: "./a", typeOnly: true },
+    ]);
   });
 
-  it("reads a re-export and a star re-export", () => {
+  it("reads a type-only re-export as type-only", () => {
+    expect(importSpecifiers('export type { A } from "./a";')).toEqual([
+      { specifier: "./a", typeOnly: true },
+    ]);
+  });
+
+  it("reads a mixed import as value", () => {
+    expect(importSpecifiers('import { type A, b } from "./a";')).toEqual([
+      { specifier: "./a", typeOnly: false },
+    ]);
+  });
+
+  it("reads a side-effect import as value", () => {
+    expect(importSpecifiers('import "./side-effect";')).toEqual([
+      { specifier: "./side-effect", typeOnly: false },
+    ]);
+  });
+
+  it("reads a type-only import wrapped across lines", () => {
+    const source = 'import type {\n  First,\n  Second,\n} from "./wide";';
+    expect(importSpecifiers(source)).toEqual([
+      { specifier: "./wide", typeOnly: true },
+    ]);
+  });
+
+  it("reads a re-export and a star re-export as value", () => {
     const source = 'export { a } from "./a";\nexport * from "./b";';
-    expect(importSpecifiers(source)).toEqual(["./a", "./b"]);
+    expect(importSpecifiers(source)).toEqual([
+      { specifier: "./a", typeOnly: false },
+      { specifier: "./b", typeOnly: false },
+    ]);
   });
 
   it("ignores a declaration that merely starts with export", () => {
@@ -117,6 +138,47 @@ describe("classifyImport: ui-never-features", () => {
     const verdict = classifyImport(
       "apps/web/src/ui/domain/status-pill.tsx",
       "../button",
+    );
+    expect(verdict).toBeNull();
+  });
+});
+
+describe("classifyImport: server-types-only", () => {
+  it("allows a type-only import of the server in the web app", () => {
+    const verdict = classifyImport(
+      "apps/web/src/api.ts",
+      "@boss/server/src/router",
+      true,
+    );
+    expect(verdict).toBeNull();
+  });
+
+  it("rejects a value import of the server in the web app", () => {
+    const violation = classifyImport(
+      "apps/web/src/api.ts",
+      "@boss/server/src/router",
+      false,
+    );
+    expect(violation?.rule).toBe("server-types-only");
+  });
+
+  it("rejects a mixed import of the server in the web app", () => {
+    const source = 'import { type AppRouter, appRouter } from "@boss/server";';
+    const statement = importSpecifiers(source)[0];
+    expect(statement?.typeOnly).toBe(false);
+    const violation = classifyImport(
+      "apps/web/src/api.ts",
+      statement?.specifier ?? "",
+      statement?.typeOnly ?? false,
+    );
+    expect(violation?.rule).toBe("server-types-only");
+  });
+
+  it("allows a value import of the server on the server side", () => {
+    const verdict = classifyImport(
+      "apps/server/src/app.ts",
+      "@boss/server/src/router",
+      false,
     );
     expect(verdict).toBeNull();
   });

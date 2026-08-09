@@ -6,9 +6,10 @@
     "module": "Preserve",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
+    "jsx": "react-jsx",
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["apps", "packages", "scripts", "vitest.config.ts"]
+  "include": ["apps", "packages", "scripts", "e2e", "vitest.config.ts"]
 }
