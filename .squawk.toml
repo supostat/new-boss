@@ -1,0 +1,7 @@
+# Pre-CI migrations are frozen history: excluded by name, never edited.
+# The gate guards every migration born after the safety net.
+excluded_paths = [
+  "packages/db/migrations/0000_wooden_leech.sql",
+  "packages/db/migrations/0001_conscious_fenris.sql",
+  "packages/db/migrations/0002_clever_blink.sql",
+]

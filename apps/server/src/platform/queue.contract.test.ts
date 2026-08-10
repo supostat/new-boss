@@ -51,12 +51,12 @@ for (const adapter of candidates) {
     let stoppedByDrainCase = false;
 
     const inviteEmail = defineJob<InvitePayload>(
-      "auth.invite_email",
+      "contract.delivery",
       async (payload) => {
         inviteLog.push(payload);
       },
     );
-    const alwaysFails = defineJob<unknown>("auth.always_fails", async () => {
+    const alwaysFails = defineJob<unknown>("contract.retry", async () => {
       failCalls += 1;
       throw new Error("boom");
     });
@@ -68,7 +68,7 @@ for (const adapter of candidates) {
       const cleaner = new Client({ connectionString: DATABASE_URL });
       await cleaner.connect();
       await cleaner.query("DELETE FROM pgboss.job WHERE name = ANY($1)", [
-        [inviteEmail.name, alwaysFails.name, "auth.slow_drain"],
+        [inviteEmail.name, alwaysFails.name, "contract.drain"],
       ]);
       await cleaner.end();
       await adapter.work([inviteEmail, alwaysFails]);
@@ -142,7 +142,7 @@ for (const adapter of candidates) {
       });
       let handlerStarted = false;
       let handlerCompleted = false;
-      const slowDrain = defineJob<unknown>("auth.slow_drain", async () => {
+      const slowDrain = defineJob<unknown>("contract.drain", async () => {
         handlerStarted = true;
         await latch;
         handlerCompleted = true;

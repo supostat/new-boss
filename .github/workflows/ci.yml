@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: boss
+          POSTGRES_PASSWORD: boss
+          POSTGRES_DB: boss
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U boss -d boss"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1026:1025
+          - 8026:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bunx drizzle-kit migrate --config packages/db/drizzle.config.ts
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun scripts/check-imports.ts
+      - run: bun scripts/check-structure.ts
+      - run: bun run test
+      - run: bunx squawk-cli --no-error-on-unmatched-pattern packages/db/migrations/*.sql
+      - run: bunx impeccable detect apps/web/src --quiet

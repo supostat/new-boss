@@ -6,6 +6,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     fileParallelism: false,
+    globalSetup: "./apps/server/vitest.global-setup.ts",
     exclude: [...configDefaults.exclude, "e2e/**"],
   },
 });

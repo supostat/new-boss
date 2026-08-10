@@ -17,6 +17,8 @@
     "@types/bun": "^1.3.14",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
+    "impeccable": "^3.5.0",
+    "squawk-cli": "^2.62.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"

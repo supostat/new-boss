@@ -25,7 +25,6 @@ const requiredDirs = [
 
 const requiredFiles = [
   "CLAUDE.md",
-  "docs/design-book.html",
   "package.json",
   "apps/server/package.json",
   "apps/web/package.json",

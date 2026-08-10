@@ -197,10 +197,11 @@ as the final pass → the guards: `bun scripts/check-structure.ts` · `bun scrip
 · squawk on migrations · `impeccable detect src/` (exit 2 blocks the merge) → mneme notes;
 staging is reviewed by the human.
 
-**Not yet true — there is no CI.** No `.github/workflows` exists, and squawk and impeccable detect
-are not installed. The two guards above exist and run BY HAND only. Ladle and Playwright are declared in the
-stack, Playwright now exists (e2e), Ladle is not yet installed. Until a CI spec lands this
-paragraph is intent, not enforcement, and §I-4 stands unpaid here — do not cite it as a check.
+**CI is live.** `.github/workflows/ci.yml` runs on every push to main (plus manual dispatch):
+fresh Postgres + Mailpit services, migrations, typecheck, lint, both guards, the full suite,
+squawk over migrations behind the named pre-CI baseline, and `impeccable detect` over the web
+app. Ladle remains declared, not installed — the catalog arrives with the work that first
+needs it.
 
 ## Prohibitions
 
