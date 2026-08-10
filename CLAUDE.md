@@ -1,6 +1,6 @@
 # CLAUDE.md — boss
 
-The project canon is `docs/design-book.html` (revision 0.17). This file is the digest for agents.
+The project canon is `docs/design-book.html` (revision 0.18). This file is the digest for agents.
 `docs/` is gitignored while the repository is public: the canon lives locally, is NOT tracked,
 and mneme notes must NEVER anchor to `docs/*` (untracked anchor = dead-anchor sink).
 On any divergence the canon wins and the digest gets fixed. Same for `DESIGN.md` — it is derived
@@ -118,6 +118,18 @@ Routing is code, not files: `routes.tsx` per slice, assembled in `router.tsx`.
   a disable is not a plain enable). sonner via shadcn, re-clothed in tokens; the only call point
   is our `toast()` from `ui/`; a hand-rolled toaster is forbidden. Depth (shadow) belongs to
   overlays and toasts only.
+- **Errors & results**: three tiers. (1) Input shape — Zod at the procedure boundary, auto
+  BAD_REQUEST; forms parse the SAME schema from shared/schemas before submit. (2) Domain
+  outcomes — returned as values: our own Result in `shared/domain/result.ts` (~10 lines,
+  ok/err discriminated union; no neverthrow/fp-ts). A form-bound outcome rides the mutation
+  OUTPUT TYPE (exhaustive client switch → form.setError at the field; mapping lives in the
+  slice). (3) Violations & infrastructure — exceptions/TRPCError with generic handling;
+  `err('db_connection_failed')` is forbidden. Uniqueness = unique index + insert-catch 23505,
+  never select-then-insert. One errorFormatter in `platform/trpc.ts`; `rest/v1` translates the
+  same Results into HTTP statuses — a literal 422 lives there only. No global error catalog —
+  a DomainError union lives in its slice. One-channel rule: a field-bound outcome is never
+  duplicated by a toast. Service growth: `service.ts` → `service/` folder with a pure re-export
+  barrel at the old path when it outgrows one screen; no premature fragmentation.
 - **Interface copy** — English, verb-first (Accept, Undo, Clock out).
   Code, identifiers, commits — English.
 - **Authz**: ordered Level tuple ('manager'…'dev', checks via atLeast = at-or-above) + orthogonal
@@ -215,7 +227,8 @@ needs it.
 - BEM and any class-naming notation — the vocabulary lives in types and components.
 - A hand-rolled UI primitive where shadcn has one; a state manager; a NOTIFY payload carrying
   data; photo bytes routed through the server; a hand-rolled toaster; motion values outside
-  the three motion tokens.
+  the three motion tokens; `err()` for infrastructure failures; a global error
+  catalog; result libraries; select-then-insert for uniqueness.
 
 ## Open questions (never freeze without the human)
 
