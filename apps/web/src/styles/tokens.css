@@ -22,4 +22,9 @@
 
   /* shape */
   --radius-base: 6px;
+
+  /* motion — one vocabulary, three durations */
+  --motion-fast: 100ms;   /* exits, always */
+  --motion-base: 140ms;   /* dialog and confirm enter */
+  --motion-slow: 160ms;   /* drawer enter */
 }

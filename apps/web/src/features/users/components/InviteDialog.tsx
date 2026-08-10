@@ -8,17 +8,15 @@ export function InviteDialog(props: { open: boolean; onClose: () => void }) {
   const inviteUser = useInviteUser();
   const [email, setEmail] = useState("");
   const [level, setLevel] = useState<Level>("manager");
-  const [rejected, setRejected] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    setRejected(false);
     try {
       await inviteUser.mutateAsync({ email, level });
       setEmail("");
       props.onClose();
     } catch {
-      setRejected(true);
+      // The sticky error toast reports; the dialog stays open for correction.
     }
   }
 
@@ -66,11 +64,6 @@ export function InviteDialog(props: { open: boolean; onClose: () => void }) {
             </option>
           ))}
         </select>
-        {rejected ? (
-          <p role="alert" className="mb-3 text-xs text-danger">
-            Could not send the invite.
-          </p>
-        ) : null}
         <div className="flex justify-end gap-2">
           <button
             type="button"

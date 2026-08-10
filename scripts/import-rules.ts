@@ -84,6 +84,13 @@ export function classifyImport(
     };
   }
 
+  if (isPackage(specifier, "sonner") && !filePath.startsWith(WEB_UI)) {
+    return {
+      rule: "toast-isolated",
+      reason: `sonner belongs under ${WEB_UI} alone`,
+    };
+  }
+
   if (filePath.startsWith(WEB_APP) && isPackage(specifier, "@boss/db")) {
     return {
       rule: "db-server-only",

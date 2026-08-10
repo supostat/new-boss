@@ -1,2 +1,52 @@
 @import "tailwindcss";
 @import "./tokens.css";
+
+/* Motion implementation consuming the token vocabulary: overlays enter at
+   base ease-out and always exit fast. Centering rides the translate
+   property, so keyframes only ever touch opacity and a transform lift. */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion is law, not an option: it must beat every utility. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: the kill switch must out-rank every animation utility */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: the kill switch must out-rank every transition utility */
+    transition: none !important;
+  }
+}

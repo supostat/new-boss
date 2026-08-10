@@ -9,6 +9,7 @@
     "@trpc/client": "^11.18.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "sonner": "^2.0.8",
     "superjson": "^2.2.6",
     "zod": "^4.4.3"
   },

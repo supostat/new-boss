@@ -184,6 +184,21 @@ describe("classifyImport: server-types-only", () => {
   });
 });
 
+describe("classifyImport: toast-isolated", () => {
+  it("rejects sonner outside ui", () => {
+    const violation = classifyImport(
+      "apps/web/src/features/users/api.ts",
+      "sonner",
+    );
+    expect(violation?.rule).toBe("toast-isolated");
+  });
+
+  it("allows sonner inside ui", () => {
+    const verdict = classifyImport("apps/web/src/ui/toast.tsx", "sonner");
+    expect(verdict).toBeNull();
+  });
+});
+
 describe("classifyImport: auth-isolated", () => {
   it("rejects the auth library outside the platform module", () => {
     const violation = classifyImport(
