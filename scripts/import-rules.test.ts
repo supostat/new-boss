@@ -199,6 +199,21 @@ describe("classifyImport: toast-isolated", () => {
   });
 });
 
+describe("classifyImport: command-isolated", () => {
+  it("rejects cmdk outside ui", () => {
+    const violation = classifyImport(
+      "apps/web/src/shell/CommandMenu.tsx",
+      "cmdk",
+    );
+    expect(violation?.rule).toBe("command-isolated");
+  });
+
+  it("allows cmdk inside ui", () => {
+    const verdict = classifyImport("apps/web/src/ui/command.tsx", "cmdk");
+    expect(verdict).toBeNull();
+  });
+});
+
 describe("classifyImport: auth-isolated", () => {
   it("rejects the auth library outside the platform module", () => {
     const violation = classifyImport(

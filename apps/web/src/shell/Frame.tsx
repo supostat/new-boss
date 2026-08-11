@@ -3,6 +3,7 @@ import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { visibleNavItems } from "../navigation";
 import type { SessionUser } from "../session";
 import { sessionKeys, signOut } from "../session";
+import { CommandMenu } from "./CommandMenu";
 
 export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
           ))}
         </div>
         <div className="flex items-center gap-3">
+          <CommandMenu level={props.user.level} />
           <span className="font-mono text-[11px] opacity-90">
             {props.user.email}
           </span>

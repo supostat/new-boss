@@ -91,6 +91,13 @@ export function classifyImport(
     };
   }
 
+  if (isPackage(specifier, "cmdk") && !filePath.startsWith(WEB_UI)) {
+    return {
+      rule: "command-isolated",
+      reason: `cmdk belongs under ${WEB_UI} alone`,
+    };
+  }
+
   if (filePath.startsWith(WEB_APP) && isPackage(specifier, "@boss/db")) {
     return {
       rule: "db-server-only",
