@@ -12,6 +12,11 @@ interface SessionPayload {
   user: SessionUser;
 }
 
+// The session's query key factory: every consumer shares one spelling.
+export const sessionKeys = {
+  root: ["session"] as const,
+};
+
 export async function fetchSession(): Promise<SessionPayload | null> {
   const response = await fetch("/api/auth/get-session");
   if (!response.ok) {
@@ -21,7 +26,7 @@ export async function fetchSession(): Promise<SessionPayload | null> {
 }
 
 export function useSession() {
-  return useQuery({ queryKey: ["session"], queryFn: fetchSession });
+  return useQuery({ queryKey: sessionKeys.root, queryFn: fetchSession });
 }
 
 export async function signIn(

@@ -1,10 +1,12 @@
 import { createDatabaseClient } from "@boss/db";
 import { userVenue } from "@boss/db/schema/venues";
 import { inVenue } from "@boss/shared/domain/authz";
+import type { ChangeEvent } from "@boss/shared/domain/realtime";
 import type { Result } from "@boss/shared/domain/result";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createUser } from "../../platform/auth";
+import { sse } from "../../platform/sse";
 import { membershipWindows, venueMembers } from "./queries";
 import {
   archiveVenue,
@@ -20,6 +22,7 @@ const { db, pool } = createDatabaseClient();
 let actorId = "";
 
 beforeAll(async () => {
+  await sse.install();
   actorId = await createUser({
     email: `${crypto.randomUUID()}@venues.test`,
     password: "sufficiently-long-venue-password",
@@ -29,8 +32,29 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await sse.stop();
   await pool.end();
 });
+
+function nextEvent(timeoutMs: number): Promise<ChangeEvent | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      unsubscribe();
+      resolve(null);
+    }, timeoutMs);
+    const unsubscribe = sse.subscribe((event) => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(event);
+    });
+  });
+}
+
+// Notifications from earlier commits arrive asynchronously; a short settle
+// keeps a fresh subscriber from catching a previous test step's event.
+function settle(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
 
 async function createMember(): Promise<string> {
   return createUser({
@@ -149,6 +173,47 @@ describe("memberships", () => {
     expect(remaining.some((row) => row.membershipId === mistaken.id)).toBe(
       false,
     );
+  });
+
+  it("a committed rename delivers a venues event to a live subscriber", async () => {
+    const created = expectOk(
+      await createVenue(`The Signal House ${crypto.randomUUID()}`),
+    );
+    await settle();
+    const waiting = nextEvent(3000);
+    expectOk(
+      await renameVenue(created.id, `The Signal Loft ${crypto.randomUUID()}`),
+    );
+    expect(await waiting).toEqual({ channel: "venues" });
+  });
+
+  it("a duplicate create rolls back and delivers nothing", async () => {
+    const suffix = crypto.randomUUID();
+    expectOk(await createVenue(`The Quiet Room ${suffix}`));
+    await settle();
+    const waiting = nextEvent(1200);
+    const duplicate = await createVenue(`the quiet room ${suffix}`);
+    expect(duplicate).toEqual({ ok: false, error: "name_taken" });
+    expect(await waiting).toBeNull();
+  });
+
+  it("membership assign delivers venue_members with the venue id", async () => {
+    const created = expectOk(
+      await createVenue(`The Member Hall ${crypto.randomUUID()}`),
+    );
+    const memberId = await createMember();
+    await settle();
+    const waiting = nextEvent(3000);
+    await assignMembership({
+      venueId: created.id,
+      userId: memberId,
+      from: new Date("2026-07-01T00:00:00Z"),
+      to: null,
+    });
+    expect(await waiting).toEqual({
+      channel: "venue_members",
+      venueId: created.id,
+    });
   });
 
   it("windows read through queries agree with inVenue at the [from, to) boundary instants", async () => {

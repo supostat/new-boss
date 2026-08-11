@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "../../api";
 import { toast } from "../../ui/toast";
+import { venueKeys } from "./keys";
 
 export function useVenues() {
   return useQuery({
-    queryKey: ["venues"],
+    queryKey: venueKeys.list(),
     queryFn: () => trpc.venues.list.query(),
   });
 }
@@ -12,7 +13,7 @@ export function useVenues() {
 export function useVenueMembers(venueId: string | undefined) {
   return useQuery({
     enabled: venueId !== undefined,
-    queryKey: ["venues", "members", venueId],
+    queryKey: venueKeys.members(venueId),
     queryFn: () => {
       if (venueId === undefined) {
         throw new Error("members query ran without a venue");
@@ -26,7 +27,7 @@ export function useVenueMembers(venueId: string | undefined) {
 // the shared server surface, never through another slice's files.
 export function useAssignableUsers() {
   return useQuery({
-    queryKey: ["users"],
+    queryKey: venueKeys.assignableUsers(),
     queryFn: () => trpc.users.list.query(),
   });
 }
@@ -34,7 +35,7 @@ export function useAssignableUsers() {
 function useVenuesInvalidation() {
   const queryClient = useQueryClient();
   return async () => {
-    await queryClient.invalidateQueries({ queryKey: ["venues"] });
+    await queryClient.invalidateQueries({ queryKey: venueKeys.root });
   };
 }
 

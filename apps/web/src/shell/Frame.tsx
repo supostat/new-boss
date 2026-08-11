@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { visibleNavItems } from "../navigation";
 import type { SessionUser } from "../session";
-import { signOut } from "../session";
+import { sessionKeys, signOut } from "../session";
 
 export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
 
   async function leave() {
     await signOut();
-    await queryClient.invalidateQueries({ queryKey: ["session"] });
+    await queryClient.invalidateQueries({ queryKey: sessionKeys.root });
     await navigate({ to: "/login" });
   }
 

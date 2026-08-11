@@ -2,17 +2,18 @@ import type { Level } from "@boss/shared/domain/authz";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "../../api";
 import { toast } from "../../ui/toast";
+import { userKeys } from "./keys";
 
 export function useUsers() {
   return useQuery({
-    queryKey: ["users"],
+    queryKey: userKeys.list(),
     queryFn: () => trpc.users.list.query(),
   });
 }
 
 export function usePendingInvites() {
   return useQuery({
-    queryKey: ["invites"],
+    queryKey: userKeys.invites(),
     queryFn: () => trpc.users.invite.list.query(),
   });
 }
@@ -20,8 +21,7 @@ export function usePendingInvites() {
 function useUsersInvalidation() {
   const queryClient = useQueryClient();
   return async () => {
-    await queryClient.invalidateQueries({ queryKey: ["users"] });
-    await queryClient.invalidateQueries({ queryKey: ["invites"] });
+    await queryClient.invalidateQueries({ queryKey: userKeys.root });
   };
 }
 
