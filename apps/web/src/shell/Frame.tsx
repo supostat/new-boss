@@ -24,6 +24,12 @@ export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
           >
             Users
           </Link>
+          <Link
+            to="/venues"
+            className="text-sm font-medium opacity-90 hover:opacity-100"
+          >
+            Venues
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-[11px] opacity-90">

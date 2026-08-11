@@ -7,7 +7,7 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
 export default defineConfig({
   testDir: fileURLToPath(new URL(".", import.meta.url)),
-  globalSetup: "./global-setup.ts",
+  globalSetup: fileURLToPath(new URL("./global-setup.ts", import.meta.url)),
   use: { baseURL: "http://localhost:5173" },
   webServer: [
     {

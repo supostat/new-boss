@@ -5,3 +5,21 @@ excluded_paths = [
   "packages/db/migrations/0001_conscious_fenris.sql",
   "packages/db/migrations/0002_clever_blink.sql",
 ]
+
+# Rules that fight the toolchain itself, measured on migration 0003: drizzle-kit
+# generates the SQL (hand-editing generated DDL is off the table) and runs every
+# migration inside a transaction, on a small fleet database.
+excluded_rules = [
+  # CONCURRENTLY cannot run inside the transaction drizzle wraps migrations in.
+  "require-concurrent-index-creation",
+  # IF NOT EXISTS is the non-transactional idiom; the transaction already makes reruns safe.
+  "prefer-robust-stmts",
+  # drizzle-kit emits plain ADD CONSTRAINT; NOT VALID + VALIDATE is inexpressible in generated DDL.
+  "constraint-missing-not-valid",
+  # same generated ADD CONSTRAINT style; the referencing tables are born empty in the same transaction.
+  "adding-foreign-key-constraint",
+  # generated migrations carry no session settings; lock waits are a non-issue on the small fleet database.
+  "require-lock-timeout",
+  # generated migrations carry no session settings; statement runtime is bounded by the small fleet database.
+  "require-statement-timeout",
+]

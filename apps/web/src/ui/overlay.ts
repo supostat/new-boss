@@ -8,3 +8,6 @@ export const overlayWidth: Record<OverlaySize, string> = {
   form: "max-w-[560px]",
   wide: "max-w-[720px]",
 };
+
+// The drawer has exactly one width; a configurable drawer is two overlays.
+export const drawerWidth = "w-[480px]";

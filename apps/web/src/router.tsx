@@ -1,6 +1,7 @@
 import { createRoute, createRouter, redirect } from "@tanstack/react-router";
 import { loginRoute } from "./features/session/routes";
 import { acceptInviteRoute, usersRoute } from "./features/users/routes";
+import { venuesRoute } from "./features/venues/routes";
 import { rootRoute } from "./rootRoute";
 import { fetchSession, useSession } from "./session";
 import { Frame } from "./shell/Frame";
@@ -40,6 +41,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   usersRoute,
+  venuesRoute,
   acceptInviteRoute,
 ]);
 
