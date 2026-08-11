@@ -1,11 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { visibleNavItems } from "../navigation";
 import type { SessionUser } from "../session";
 import { signOut } from "../session";
 
 export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const groups = visibleNavItems(
+    Object.values(router.routesById),
+    props.user.level,
+  );
 
   async function leave() {
     await signOut();
@@ -18,18 +24,19 @@ export function Frame(props: { user: SessionUser; children: React.ReactNode }) {
       <header className="flex items-center justify-between bg-brand px-4 py-2 text-surface">
         <div className="flex items-center gap-5">
           <span className="font-display text-lg font-bold">boss</span>
-          <Link
-            to="/users"
-            className="text-sm font-medium opacity-90 hover:opacity-100"
-          >
-            Users
-          </Link>
-          <Link
-            to="/venues"
-            className="text-sm font-medium opacity-90 hover:opacity-100"
-          >
-            Venues
-          </Link>
+          {groups.map((group) => (
+            <nav key={group.group} className="flex items-center gap-5">
+              {group.items.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="text-sm font-medium opacity-90 hover:opacity-100"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          ))}
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-[11px] opacity-90">

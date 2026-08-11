@@ -1,7 +1,8 @@
-import { createRoute, redirect } from "@tanstack/react-router";
+import { canManageVenues } from "@boss/shared/domain/venues";
+import { createRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { accessGuard } from "../../navigation";
 import { rootRoute } from "../../rootRoute";
-import { fetchSession } from "../../session";
 import { VenuesPage } from "./components/VenuesPage";
 
 export const venuesRoute = createRoute({
@@ -12,11 +13,10 @@ export const venuesRoute = createRoute({
     rename: z.uuid().optional(),
     members: z.uuid().optional(),
   }),
-  beforeLoad: async () => {
-    const session = await fetchSession();
-    if (session === null) {
-      throw redirect({ to: "/login" });
-    }
+  staticData: {
+    access: canManageVenues,
+    nav: { group: "Fleet", label: "Venues" },
   },
+  beforeLoad: accessGuard(canManageVenues),
   component: VenuesPage,
 });
