@@ -57,6 +57,15 @@
   }
 }
 
+/* A control that acts announces itself under the pointer; a dead one does
+   not promise what it will not do. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 /* Reduced motion is law, not an option: it must beat every utility. */
 @media (prefers-reduced-motion: reduce) {
   *,

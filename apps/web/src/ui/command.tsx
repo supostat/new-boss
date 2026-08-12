@@ -179,7 +179,7 @@ export function CommandTile(props: {
       value={props.value}
       data-tile-value={props.value}
       onSelect={props.onSelect}
-      className="flex cursor-default select-none flex-col items-center gap-2 rounded-base px-1 py-3 text-center data-[selected=true]:bg-canvas"
+      className="flex cursor-pointer select-none flex-col items-center gap-2 rounded-base px-1 py-3 text-center data-[selected=true]:bg-canvas"
     >
       <span className="flex size-14 items-center justify-center rounded-full bg-brand font-mono text-base text-surface">
         {tileInitials(props.label)}

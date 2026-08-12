@@ -31,6 +31,7 @@ test("the palette projects the registry for an admin: open, filter, navigate, es
   await page.waitForURL("**/users");
   const searchButton = page.getByRole("button", { name: /^Search/ });
   await expect(searchButton).toBeVisible();
+  await expect(searchButton).toHaveCSS("cursor", "pointer");
 
   await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog");
@@ -38,6 +39,10 @@ test("the palette projects the registry for an admin: open, filter, navigate, es
   await expect(palette.getByText("Fleet")).toBeVisible();
   await expect(palette.getByRole("option", { name: "Users" })).toBeVisible();
   await expect(palette.getByRole("option", { name: "Venues" })).toBeVisible();
+  await expect(palette.getByRole("option", { name: "Users" })).toHaveCSS(
+    "cursor",
+    "pointer",
+  );
 
   await page.keyboard.type("ven");
   await expect(palette.getByRole("option", { name: "Users" })).toBeHidden();
