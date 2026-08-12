@@ -9,9 +9,8 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandHints,
-  CommandInput,
-  CommandItem,
   CommandList,
+  CommandTile,
 } from "../ui/command";
 
 // The palette has no list of its own: its items exist only as this
@@ -53,6 +52,7 @@ export function CommandMenu(props: { level: Level }) {
       open={open}
       onOpenChange={setOpen}
       title="Command menu"
+      placeholder={groups.length === 0 ? undefined : "Search sections…"}
       trigger={
         <button
           type="button"
@@ -70,25 +70,21 @@ export function CommandMenu(props: { level: Level }) {
           No sections available.
         </p>
       ) : (
-        <>
-          <CommandInput placeholder="Search sections…" />
-          <CommandList>
-            <CommandEmpty>No results.</CommandEmpty>
-            {groups.map((group) => (
-              <CommandGroup key={group.group} heading={group.group}>
-                {group.items.map((item) => (
-                  <CommandItem
-                    key={item.path}
-                    value={item.label}
-                    onSelect={() => go(item.path)}
-                  >
-                    {item.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </>
+        <CommandList>
+          <CommandEmpty>No results.</CommandEmpty>
+          {groups.map((group) => (
+            <CommandGroup key={group.group} heading={group.group}>
+              {group.items.map((item) => (
+                <CommandTile
+                  key={item.path}
+                  value={item.label}
+                  label={item.label}
+                  onSelect={() => go(item.path)}
+                />
+              ))}
+            </CommandGroup>
+          ))}
+        </CommandList>
       )}
       <CommandHints />
     </CommandDialog>

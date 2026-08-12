@@ -48,6 +48,24 @@ test("the palette projects the registry for an admin: open, filter, navigate, es
   await expect(palette).toBeHidden();
   await expect(page.getByRole("heading", { name: "Venues" })).toBeVisible();
 
+  await page.keyboard.press("Control+k");
+  await expect(palette).toBeVisible();
+  const usersTile = palette.getByRole("option", { name: "Users" });
+  const venuesTile = palette.getByRole("option", { name: "Venues" });
+  await expect(usersTile).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowRight");
+  await expect(venuesTile).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowLeft");
+  await expect(usersTile).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowDown");
+  await expect(usersTile).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowUp");
+  await expect(usersTile).toHaveAttribute("aria-selected", "true");
+
+  await page.keyboard.press("Enter");
+  await page.waitForURL("**/users");
+  await expect(palette).toBeHidden();
+
   await searchButton.click();
   await expect(palette).toBeVisible();
   await page.keyboard.press("Escape");
